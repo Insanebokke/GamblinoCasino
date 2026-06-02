@@ -2032,7 +2032,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <div class="tb-actions" id="tbActions">
       <div class="balance-box">
         <i class="fa-solid fa-coins bi"></i>
-        <span class="bamt" id="balAmt">0.00</span>
+        <span class="bamt" id="balAmt">1,000.00</span>
         <span class="bcur">USD</span>
       </div>
       <button class="btn-auth-login" onclick="window._auth&&window._auth.show('login')">Login</button>
@@ -3527,8 +3527,8 @@ connectLiveFeed();
 })();
 
 /* ── SHARED BALANCE ── */
-var playerBalance=0.00;
-var _balShown=0.00;
+var playerBalance=1000.00;
+var _balShown=1000.00;
 var _balRaf=null;
 function fmtBal(v){return v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function _setBalEls(v){

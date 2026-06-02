@@ -14,7 +14,7 @@ db.exec(`
     username      TEXT    NOT NULL UNIQUE COLLATE NOCASE,
     email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,
     password_hash TEXT    NOT NULL,
-    balance       REAL    NOT NULL DEFAULT 0.00,
+    balance       REAL    NOT NULL DEFAULT 1000.00,
     total_bets    INTEGER NOT NULL DEFAULT 0,
     total_wins    INTEGER NOT NULL DEFAULT 0,
     total_wagered REAL    NOT NULL DEFAULT 0,
