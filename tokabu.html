@@ -8293,10 +8293,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     if(nb) nb.innerHTML='<span id="depAddrCoinLbl">'+coin+'</span> · '+(_state.network||COIN_NETS[coin]||coin);
     depDrawQR(document.getElementById('depQrCanvas'), _state.address, coin);
     var cb=document.getElementById('depCopyBtn');
-    cb.className='dep-copy-btn'; cb.innerHTML='<i class="fa-regular fa-copy"></i>';
-    document.getElementById('depTxInput').value='';
+    if(cb){ cb.className='dep-copy-btn'; cb.innerHTML='<i class="fa-regular fa-copy"></i>'; }
+    var txIn=document.getElementById('depTxInput'); if(txIn) txIn.value='';
     var sb=document.getElementById('depSubmitBtn');
-    sb.disabled=false; sb.innerHTML='I\'ve Sent It — Verify <i class="fa-solid fa-shield-check"></i>';
+    if(sb){ sb.disabled=false; sb.innerHTML='Done <i class="fa-solid fa-check"></i>'; }
 
     /* Decide whether to show wallet pay section or go straight to manual */
     var wlt=walletForCoin(coin);
