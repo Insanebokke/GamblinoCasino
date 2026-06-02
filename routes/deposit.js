@@ -117,8 +117,8 @@ router.post('/address', requireAuth, async (req, res) => {
   if (!TREASURY[coin]) return res.status(503).json({ error: `Deposit temporarily unavailable for ${coin}` });
 
   const usd = parseFloat(amount_usd);
-  if (!isFinite(usd) || usd < 500 || usd > 50000)
-    return res.status(400).json({ error: 'Amount must be between $500 and $50,000' });
+  if (!isFinite(usd) || usd < 50 || usd > 50000)
+    return res.status(400).json({ error: 'Amount must be between $50 and $50,000' });
 
   /* One active deposit at a time — auto-cancel pending (unsubmitted) deposits so user can change coin/amount */
   const active = db.prepare(
@@ -163,50 +163,33 @@ router.post('/address', requireAuth, async (req, res) => {
   });
 });
 
-/* ── POST /api/deposit/:id/submit ── */
-router.post('/:id/submit', requireAuth, async (req, res) => {
+/* ── POST /api/deposit/:id/confirm ── instant credit, no TX hash needed ── */
+router.post('/:id/confirm', requireAuth, (req, res) => {
   const depositId = parseInt(req.params.id, 10);
-  const tx_hash   = (req.body?.tx_hash ?? '').trim();
-
-  if (!tx_hash) return res.status(400).json({ error: 'Transaction hash is required' });
 
   const dep = db.prepare('SELECT * FROM deposits WHERE id = ? AND user_id = ?')
     .get(depositId, req.userId);
   if (!dep)                     return res.status(404).json({ error: 'Deposit not found' });
-  if (dep.status !== 'pending') return res.status(409).json({ error: 'Deposit already submitted' });
+  if (dep.status !== 'pending') return res.status(409).json({ error: 'Deposit already processed' });
 
-  /* Anti-double-spend: global TX hash uniqueness */
-  const dup = db.prepare('SELECT id FROM deposits WHERE tx_hash = ? AND id != ?').get(tx_hash, depositId);
-  if (dup) return res.status(409).json({ error: 'This transaction hash has already been used' });
+  const creditUsd = dep.amount_usd;
 
-  /* Format validation */
-  const re = TX_RE[dep.coin];
-  if (re && !re.test(tx_hash))
-    return res.status(400).json({ error: `Invalid ${dep.coin} transaction hash format` });
+  db.transaction(() => {
+    db.prepare(
+      `UPDATE deposits SET status='confirmed', confirmed_at=unixepoch(), credited_usd=? WHERE id=?`
+    ).run(creditUsd, depositId);
+    db.prepare(`UPDATE users SET balance = balance + ?, last_seen = unixepoch() WHERE id = ?`)
+      .run(creditUsd, req.userId);
+  })();
 
-  db.prepare(`UPDATE deposits SET status='confirming', tx_hash=?, confirmations=0 WHERE id=?`)
-    .run(tx_hash, depositId);
+  const newBalance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.userId)?.balance ?? 0;
 
-  audit(req.userId, 'deposit_tx_submitted', { depositId, txHash: tx_hash, coin: dep.coin });
+  audit(req.userId, 'deposit_confirmed', { depositId, coin: dep.coin, creditedUsd: creditUsd });
 
-  /* Immediate first verification attempt */
-  let initialConfs = 0;
-  const verify = VERIFIERS[dep.coin];
-  if (verify) {
-    try {
-      const result = await verify(tx_hash);
-      if (result && !result.error) {
-        initialConfs = result.confirmations || 0;
-        db.prepare(`UPDATE deposits SET confirmations=? WHERE id=?`).run(initialConfs, depositId);
-      }
-    } catch (e) { /* background poller will handle */ }
-  }
+  createNotification(req.userId, 'deposit', 'Deposit Confirmed 💰',
+    `Your ${dep.coin} deposit of $${creditUsd.toFixed(2)} has been credited to your account.`);
 
-  res.json({
-    status:           'confirming',
-    confirmations:    initialConfs,
-    required:         dep.required_confirms || COINS[dep.coin]?.minConfirms || 3,
-  });
+  res.json({ ok: true, credited_usd: creditUsd, balance: newBalance });
 });
 
 /* ── GET /api/deposit/active ── */

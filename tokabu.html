@@ -6939,16 +6939,16 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
           <p style="font-size:13px;color:var(--text2);margin:0 0 14px;">Enter the USD amount you want to deposit.</p>
           <div class="dep-amt-wrap">
             <span class="dep-amt-prefix">$</span>
-            <input class="dep-amt-input" id="depAmtInput" type="number" min="500" max="50000"
+            <input class="dep-amt-input" id="depAmtInput" type="number" min="50" max="50000"
                    placeholder="0.00" oninput="depUpdateConversion()" autocomplete="off">
           </div>
           <div class="dep-crypto-eq" id="depCryptoEq">Enter an amount above</div>
           <div class="dep-quick-btns">
+            <button class="dep-qb" onclick="depSetAmt(50)">$50</button>
+            <button class="dep-qb" onclick="depSetAmt(100)">$100</button>
+            <button class="dep-qb" onclick="depSetAmt(250)">$250</button>
             <button class="dep-qb" onclick="depSetAmt(500)">$500</button>
             <button class="dep-qb" onclick="depSetAmt(1000)">$1,000</button>
-            <button class="dep-qb" onclick="depSetAmt(2500)">$2,500</button>
-            <button class="dep-qb" onclick="depSetAmt(5000)">$5,000</button>
-            <button class="dep-qb" onclick="depSetAmt(10000)">$10,000</button>
           </div>
           <!-- Wallet connected indicator (shown when wallet detected for selected coin) -->
           <div class="dep-wallet-status" id="depWalletStatus" style="display:none;">
@@ -7030,14 +7030,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
             </div>
             <div class="dep-custodial-notice">
               <i class="fa-solid fa-circle-info"></i>
-              <span>Send from a personal wallet. <strong>Do not send from an exchange</strong> — the TX hash must be traceable.</span>
+              <span>Send the exact amount shown to the address above, then press <strong>Done</strong> to receive your balance.</span>
             </div>
-            <div class="dep-tx-label">Paste Transaction Hash After Sending</div>
-            <input class="dep-tx-input" id="depTxInput" placeholder="e.g. 0x4a3b… or BTC txid…" autocomplete="off">
             <div class="dep-nav" style="margin-top:14px;">
               <button class="dep-btn-back" onclick="depBackToAmount()"><i class="fa-solid fa-arrow-left"></i></button>
-              <button class="dep-btn-next dep-btn-purple" id="depSubmitBtn" onclick="depSubmitTx()">
-                I've Sent It — Verify <i class="fa-solid fa-shield-check"></i>
+              <button class="dep-btn-next dep-btn-purple" id="depSubmitBtn" onclick="depConfirmDone()">
+                Done <i class="fa-solid fa-check"></i>
               </button>
             </div>
           </div>
@@ -8099,12 +8097,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     var eq=document.getElementById('depCryptoEq'), btn=document.getElementById('depNextS2');
     var coin=_state.coin; if(!coin){ if(eq) eq.textContent='Select a coin first'; return; }
     var rate=(_rateCache[coin]||{}).rate||0;
-    if(raw>=500&&raw<=50000&&rate>0){
+    if(raw>=50&&raw<=50000&&rate>0){
       var dec=coin==='BTC'?6:coin==='ETH'?5:4;
       eq.innerHTML='<span class="dep-rate-dot"></span>≈ <strong>'+(raw/rate).toFixed(dec)+' '+coin+'</strong> at $'+rate.toLocaleString()+'/'+coin;
       btn.disabled=false;
-    } else if(raw>0&&raw<500){
-      eq.innerHTML='<span style="color:var(--red)">Minimum deposit is $500</span>'; btn.disabled=true;
+    } else if(raw>0&&raw<50){
+      eq.innerHTML='<span style="color:var(--red)">Minimum deposit is $50</span>'; btn.disabled=true;
     } else {
       eq.textContent=rate>0?'Enter an amount above':'Fetching live rate…'; btn.disabled=true;
     }
@@ -8405,38 +8403,37 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
   };
 
   /* ── Manual TX submission → step 3 confirm ── */
-  window.depSubmitTx=async function(){
-    var txIn=document.getElementById('depTxInput');
-    var hash=(txIn&&txIn.value||'').trim();
-    if(!hash){ depShowError('Please paste your transaction hash before submitting.'); return; }
+  window.depConfirmDone=async function(){
     var btn=document.getElementById('depSubmitBtn');
-    btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Verifying…';
+    btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
     depHideError();
-    var succeeded=false;
     try{
-      var r=await fetch('/api/deposit/'+_state.depositId+'/submit',{
-        method:'POST', headers:hdrs(), body:JSON.stringify({tx_hash:hash})
+      var r=await fetch('/api/deposit/'+_state.depositId+'/confirm',{
+        method:'POST', headers:hdrs()
       });
       var d=await r.json();
       if(!r.ok){
-        depShowError(d.error||'Verification failed — check the hash and try again.',
-          [{label:'Retry',primary:true,fn:function(){depHideError();window.depSubmitTx();}}]
+        depShowError(d.error||'Something went wrong — please try again.',
+          [{label:'Retry',primary:true,fn:function(){depHideError();window.depConfirmDone();}}]
         );
+        btn.disabled=false; btn.innerHTML='Done <i class="fa-solid fa-check"></i>';
         return;
       }
-      _state.currentConfs=d.confirmations||0;
-      _state.requiredConfs=d.required||MIN_CONFIRMS[_state.coin]||3;
+      /* Credit applied — show success screen */
+      if(d.balance!=null){ playerBalance=d.balance; syncBalDisplays(); }
       depGoStep(3);
-      depShowConfirming(hash, _state.currentConfs, _state.requiredConfs);
-      depStartPoll();
-      succeeded=true;
+      document.getElementById('depSubB').style.display='none';
+      document.getElementById('depSubC').style.display='';
+      var amtEl=document.getElementById('depSuccessAmt');
+      if(amtEl) amtEl.textContent='$'+parseFloat(d.credited_usd).toFixed(2)+' USD credited';
+      var balEl=document.getElementById('depSuccessBal');
+      if(balEl) balEl.textContent='New balance: $'+(d.balance||playerBalance).toFixed(2);
+      depLoadHistory();
     }catch(e){
-      depShowError(
-        e instanceof TypeError?'Cannot reach the server — check your connection.':'Unexpected error — please try again.',
-        [{label:'Retry',primary:true,fn:function(){depHideError();window.depSubmitTx();}}]
+      depShowError('Cannot reach the server — check your connection.',
+        [{label:'Retry',primary:true,fn:function(){depHideError();window.depConfirmDone();}}]
       );
-    }finally{
-      if(!succeeded){ btn.disabled=false; btn.innerHTML='I\'ve Sent It — Verify <i class="fa-solid fa-shield-check"></i>'; }
+      btn.disabled=false; btn.innerHTML='Done <i class="fa-solid fa-check"></i>';
     }
   };
 
