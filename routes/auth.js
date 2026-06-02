@@ -37,7 +37,7 @@ router.post('/signup', async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     const { lastInsertRowid } = db
-      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 1000)')
+      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 0)')
       .run(username.trim(), email.toLowerCase().trim(), hash);
 
     const user = db.prepare(`SELECT ${SAFE_COLS} FROM users WHERE id = ?`).get(lastInsertRowid);
@@ -70,6 +70,34 @@ router.post('/login', async (req, res) => {
 
   db.prepare('UPDATE users SET last_seen = unixepoch() WHERE id = ?').run(row.id);
   res.json({ token: sign(row.id), user: safeUser(row) });
+});
+
+/* ── POST /api/auth/guest ── auto-create/resume a guest account by device ID ── */
+router.post('/guest', async (req, res) => {
+  const guestId = (req.body?.guestId || '').trim();
+  if (!guestId || guestId.length < 16)
+    return res.status(400).json({ error: 'Invalid guest ID' });
+
+  const username = 'g_' + guestId.slice(0, 24);
+  const email    = guestId + '@guest.local';
+
+  const existing = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  if (existing) {
+    db.prepare('UPDATE users SET last_seen = unixepoch() WHERE id = ?').run(existing.id);
+    return res.json({ token: sign(existing.id), user: safeUser(existing) });
+  }
+
+  try {
+    const hash = await bcrypt.hash(guestId, 10);
+    const { lastInsertRowid } = db
+      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 0)')
+      .run(username, email, hash);
+    const user = db.prepare(`SELECT ${SAFE_COLS} FROM users WHERE id = ?`).get(lastInsertRowid);
+    res.status(201).json({ token: sign(lastInsertRowid), user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 /* ── GET /api/auth/me ── */

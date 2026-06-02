@@ -2035,8 +2035,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
         <span class="bamt" id="balAmt">1,000.00</span>
         <span class="bcur">USD</span>
       </div>
-      <button class="btn-auth-login" onclick="window._auth&&window._auth.show('login')">Login</button>
-      <button class="btn-auth-signup" onclick="window._auth&&window._auth.show('signup')">Sign Up</button>
     </div>
   </header>
 
@@ -6292,8 +6290,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
           <span class="bamt" id="balAmt">${fmtBal(playerBalance)}</span>
           <span class="bcur">USD</span>
         </div>
-        <button class="btn-auth-login" onclick="window._auth.show('login')">Login</button>
-        <button class="btn-auth-signup" onclick="window._auth.show('signup')">Sign Up</button>`;
+        `;
     }
   }
 
@@ -6499,17 +6496,37 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
   window.setAuthMode=setMode;
 
   /* ── Bootstrap ── */
-  async function init(){
-    if(!_token){ window._authToken=null; return; }
+  async function autoGuest(){
     try{
-      const r=await fetch('/api/auth/me',{headers:hdrs()});
+      let gid=localStorage.getItem('tk_guest_id');
+      if(!gid){
+        gid=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID()
+          :(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36));
+        localStorage.setItem('tk_guest_id',gid);
+      }
+      const r=await fetch('/api/auth/guest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({guestId:gid})});
       if(r.ok){
-        _user=await r.json(); window._authToken=_token;
-        playerBalance=_user.balance; _balShown=_user.balance; syncBalDisplays();
-        updateTopbar(); loadHistory(); startBalPoll();
+        const d=await r.json();
+        _token=d.token; localStorage.setItem('tk_token',_token); window._authToken=_token;
+        _user=d.user; playerBalance=d.user.balance; _balShown=d.user.balance;
+        syncBalDisplays(); updateTopbar(); loadHistory(); startBalPoll();
         if(window._notif) window._notif.syncFromBackend(_token);
-      } else { _token=null; localStorage.removeItem('tk_token'); window._authToken=null; }
-    }catch{ window._authToken=null; }
+      }
+    }catch(e){ console.warn('[guest]',e); }
+  }
+
+  async function init(){
+    if(_token){
+      try{
+        const r=await fetch('/api/auth/me',{headers:hdrs()});
+        if(r.ok){
+          _user=await r.json(); window._authToken=_token;
+          playerBalance=_user.balance; _balShown=_user.balance; syncBalDisplays();
+          updateTopbar(); loadHistory(); startBalPoll();
+          if(window._notif) window._notif.syncFromBackend(_token);
+        } else { _token=null; localStorage.removeItem('tk_token'); await autoGuest(); }
+      }catch{ await autoGuest(); }
+    } else { await autoGuest(); }
   }
   init();
 })();
