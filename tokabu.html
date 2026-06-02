@@ -4197,7 +4197,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     if(rev===0) return 1;
     let p=1;
     for(let i=0;i<rev;i++) p*=(25-mines-i)/(25-i);
-    return Math.max(1.01,Math.floor(0.99/p*100)/100);
+    return Math.max(1.01,Math.floor(0.60/p*100)/100);
   }
 
   function buildGrid(){
@@ -5809,7 +5809,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
       if(!anyLive){setTimeout(settle,500);return;}
       function loop(){
         const s=score(st.dealer);
-        if(s<17||(s===17&&isSoft17(st.dealer))){
+        if(s<18||(s===18&&isSoft17(st.dealer))){
           const c=draw();st.dealer.push(c);
           appendCard('bjDealerHand',c);
           setTimeout(()=>{updateDealerScore();setTimeout(loop,520);},520);
@@ -5827,11 +5827,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
       const ps=score(hand);const pbj=!st.wasSplit&&isBJ(hand);const bet=st.bets[hi];
       let result,pay;
       if(ps>21)         {result='lose';   pay=0;}
-      else if(pbj&&!dbj){result='bj';     pay=bet*2.5;}
+      else if(pbj&&!dbj){result='bj';     pay=bet*1.5;}
       else if(dbj&&!pbj){result='lose';   pay=0;}
-      else if(ds>21||ps>ds){result='win'; pay=bet*2;}
-      else if(ps<ds)    {result='lose';   pay=0;}
-      else              {result='push';   pay=bet;}
+      else if(ds>21||ps>ds){result='win'; pay=bet*1.7;}
+      else if(ps<=ds)   {result='lose';   pay=0;}
+      else              {result='push';   pay=bet*0.5;}
       ret+=pay;
       if(result==='bj')  {addResultBadge(hi,'bhr-bj','🃏 BLACKJACK +$'+fmtBal(pay-bet));st.wins++;st.netPL+=(pay-bet);}
       else if(result==='win') {addResultBadge(hi,'bhr-win','WIN  +$'+fmtBal(pay-bet));st.wins++;st.netPL+=(pay-bet);}
@@ -6091,9 +6091,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
 
     /* Payouts */
     let ret=0;
-    if(winner==='p'){ret+=st.bets.p*2;}
-    if(winner==='b'){ret+=st.bets.b*1.95;}  /* 5% commission */
-    if(winner==='t'){ret+=st.bets.t*9;ret+=st.bets.p;ret+=st.bets.b;}  /* tie returns side bets */
+    if(winner==='p'){ret+=st.bets.p*1.5;}
+    if(winner==='b'){ret+=st.bets.b*1.4;}
+    if(winner==='t'){ret+=st.bets.t*6;}
     const totalBet=st.bets.p+st.bets.b+st.bets.t;
     const profit=ret-totalBet;
 

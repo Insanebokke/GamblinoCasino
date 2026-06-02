@@ -63,22 +63,22 @@ const GAMES = {
       let win = false, multiplier = 0;
       if (typeof bet === 'number') {
         win = pocket === bet;
-        multiplier = 36;
+        multiplier = 18;  // was 36
       } else if (bet === 'red') {
         win = RED.includes(pocket);
-        multiplier = 2;
+        multiplier = 1.5;  // was 2
       } else if (bet === 'black') {
         win = !RED.includes(pocket) && pocket !== 0;
-        multiplier = 2;
+        multiplier = 1.5;  // was 2
       } else if (bet === 'green') {
         win = pocket === 0;
-        multiplier = 36;
+        multiplier = 18;  // was 36
       } else if (bet === 'even') {
         win = pocket !== 0 && pocket % 2 === 0;
-        multiplier = 2;
+        multiplier = 1.5;  // was 2
       } else if (bet === 'odd') {
         win = pocket % 2 === 1;
-        multiplier = 2;
+        multiplier = 1.5;  // was 2
       }
       return { pocket, win, multiplier: win ? multiplier * (1 - engine.HOUSE_EDGE) : 0, bet };
     },
