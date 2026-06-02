@@ -73,7 +73,7 @@ app.use((err, _req, res, _next) => {
 /* ── Start ── */
 const PORT = parseInt(process.env.PORT) || 3000;
 const server = app.listen(PORT, () => {
-  console.log(`\n🎰  Tokabu Casino  →  http://localhost:${PORT}  [${process.env.NODE_ENV ?? 'development'}]\n`);
+  console.log(`\n🎲  Gamblino Casino  →  http://localhost:${PORT}  [${process.env.NODE_ENV ?? 'development'}]\n`);
 });
 
 /* ── Graceful shutdown ── */
