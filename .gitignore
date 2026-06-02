@@ -1,0 +1,8 @@
+node_modules/
+db/tokabu.db
+db/tokabu.db-shm
+db/tokabu.db-wal
+.env
+.DS_Store
+oframle/
+WDFF/
