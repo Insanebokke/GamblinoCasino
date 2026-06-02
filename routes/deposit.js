@@ -96,6 +96,26 @@ if (process.env.NODE_ENV !== 'test') {
   setInterval(pollConfirmingDeposits, 30_000);
 }
 
+/* ── POST /api/deposit/credit ── instant balance credit, no address generation needed ── */
+router.post('/credit', requireAuth, (req, res) => {
+  const { coin, amount_usd } = req.body ?? {};
+  if (!COINS[coin]) return res.status(400).json({ error: 'Unsupported coin' });
+  const usd = parseFloat(amount_usd);
+  if (!isFinite(usd) || usd < 50 || usd > 50000)
+    return res.status(400).json({ error: 'Amount must be between $50 and $50,000' });
+
+  db.prepare('UPDATE users SET balance = balance + ?, last_seen = unixepoch() WHERE id = ?')
+    .run(usd, req.userId);
+
+  const newBalance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.userId)?.balance ?? 0;
+
+  audit(req.userId, 'deposit_credited', { coin, amountUsd: usd });
+  createNotification(req.userId, 'deposit', 'Deposit Confirmed 💰',
+    `Your $${usd.toFixed(2)} deposit has been credited.`);
+
+  res.json({ ok: true, credited_usd: usd, balance: newBalance });
+});
+
 /* ── GET /api/deposit/rate?coin=BTC ── */
 router.get('/rate', requireAuth, async (req, res) => {
   const coin = (req.query.coin || '').toUpperCase();

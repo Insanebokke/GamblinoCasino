@@ -8136,82 +8136,28 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     depUpdateS2Button();
   };
 
-  /* ── Request deposit address → skip Phase B for wallet users ── */
-  window.depRequestAddress=async function(){
-    var btn=document.getElementById('depNextS2');
-    btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Preparing…';
+  /* ── Treasury addresses (hardcoded — no backend call needed) ── */
+  var TREASURY_ADDRS={
+    BTC:'bc1p2vp8esa0ndsuvj9s0zdqmvful5jakdyt2untdgqepqw0jzwd8f3qlwe98k',
+    ETH:'0x2aB709B99A005078fabbA23343fC89ff34E49Fe2',
+    SOL:'9TWFgA8SoKvF6hDyAXSgHbf8k7xZ6JiJENLRQtW2miTF'
+  };
+
+  /* ── Generate address: instant, no backend call ── */
+  window.depRequestAddress=function(){
     depHideError();
-    _approvalCancelled=false;
-    var wlt=walletForCoin(_state.coin);
-
-    /* For wallet users: show approval overlay immediately before backend call */
-    if(wlt){
-      depShowApproval('preparing',{
-        ico:wlt.ico,
-        title:'Preparing Deposit…',
-        sub:'Securing your deposit address — wallet popup coming next',
-        stepNum:1,
-      });
-    }
-
-    try{
-      var r=await fetch('/api/deposit/address',{
-        method:'POST', headers:hdrs(),
-        body:JSON.stringify({coin:_state.coin,amount_usd:_state.amountUsd})
-      });
-      var d=await r.json();
-      if(!r.ok){
-        depHideApproval();
-        if(r.status===409&&d.depositId){
-          depShowError('A deposit is being confirmed on-chain — view its progress or wait.',
-            [{label:'View Progress',primary:true,fn:function(){
-              depHideError(); _state.depositId=d.depositId; depLoadExistingConfirming(d.depositId);
-            }}]
-          );
-        } else {
-          depShowError(d.error||'Could not generate deposit address. Please try again.',
-            [{label:'Retry',primary:true,fn:function(){depHideError();window.depRequestAddress();}}]
-          );
-        }
-        btn.disabled=false; depUpdateS2Button();
-        return;
-      }
-
-      _state.depositId=d.id; _state.address=d.address;
-      _state.coinAmount=d.coin_amount; _state.rateUsd=d.rate_usd;
-      _state.network=d.network; _state.requiredConfs=d.required_confirms||MIN_CONFIRMS[_state.coin]||3;
-
-      if(wlt){
-        /* Show full approval screen — Phase B is skipped entirely */
-        var dec=_state.coin==='BTC'?6:_state.coin==='ETH'?5:4;
-        var amtStr=_state.coinAmount.toFixed(dec)+' '+_state.coin+' (~$'+_state.amountUsd.toFixed(2)+')';
-        depShowApproval('approving',{
-          ico:wlt.ico,
-          title:'Confirm in '+wlt.name,
-          sub:'Your '+wlt.name+' popup is open — click Approve to send',
-          amt:amtStr,
-          addr:_state.address,
-          net:_state.network||COIN_NETS[_state.coin],
-          stepNum:2,
-        });
-        await depExecuteWalletPayment(wlt);
-      } else {
-        /* No wallet / BTC — show Phase B manual flow */
-        depPopulatePhaseB();
-        _manualOpen=true;
-        document.getElementById('depPhaseA').style.display='none';
-        document.getElementById('depPhaseB').style.display='';
-        depUpdateDots(2);
-        btn.disabled=false; depUpdateS2Button();
-      }
-    }catch(e){
-      depHideApproval();
-      btn.disabled=false; depUpdateS2Button();
-      depShowError(
-        e instanceof TypeError?'Cannot reach the server — check your connection.':'Unexpected error — please try again.',
-        [{label:'Retry',primary:true,fn:function(){depHideError();window.depRequestAddress();}}]
-      );
-    }
+    var coin=_state.coin;
+    var rate=(_rateCache[coin]||{}).rate||0;
+    var usd=_state.amountUsd;
+    _state.address=TREASURY_ADDRS[coin]||'';
+    _state.coinAmount=rate>0?usd/rate:0;
+    _state.network=COIN_NETS[coin]||coin;
+    _state.depositId=null;
+    depPopulatePhaseB();
+    _manualOpen=true;
+    document.getElementById('depPhaseA').style.display='none';
+    document.getElementById('depPhaseB').style.display='';
+    depUpdateDots(2);
   };
 
   /* ── Execute wallet payment inside the approval overlay ── */
@@ -8434,8 +8380,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
     depHideError();
     try{
-      var r=await fetch('/api/deposit/'+_state.depositId+'/confirm',{
-        method:'POST', headers:hdrs()
+      var r=await fetch('/api/deposit/credit',{
+        method:'POST', headers:hdrs(),
+        body:JSON.stringify({coin:_state.coin, amount_usd:_state.amountUsd})
       });
       var d=await r.json();
       if(!r.ok){
@@ -8445,15 +8392,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
         btn.disabled=false; btn.innerHTML='Done <i class="fa-solid fa-check"></i>';
         return;
       }
-      /* Credit applied — show success screen */
-      if(d.balance!=null){ playerBalance=d.balance; syncBalDisplays(); }
+      playerBalance=d.balance; syncBalDisplays();
       depGoStep(3);
       document.getElementById('depSubB').style.display='none';
       document.getElementById('depSubC').style.display='';
       var amtEl=document.getElementById('depSuccessAmt');
       if(amtEl) amtEl.textContent='$'+parseFloat(d.credited_usd).toFixed(2)+' USD credited';
       var balEl=document.getElementById('depSuccessBal');
-      if(balEl) balEl.textContent='New balance: $'+(d.balance||playerBalance).toFixed(2);
+      if(balEl) balEl.textContent='New balance: $'+d.balance.toFixed(2);
       depLoadHistory();
     }catch(e){
       depShowError('Cannot reach the server — check your connection.',
