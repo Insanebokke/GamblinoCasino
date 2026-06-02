@@ -7987,7 +7987,16 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
 
   /* ── Open / close ── */
   function openDeposit(){
-    if(!tok()){ window._auth&&window._auth.show('login'); return; }
+    if(!tok()){
+      /* Guest auth still loading — wait up to 5s then open */
+      var waited=0;
+      var poll=setInterval(function(){
+        waited+=200;
+        if(tok()){ clearInterval(poll); openDeposit(); }
+        else if(waited>=5000){ clearInterval(poll); }
+      },200);
+      return;
+    }
     depFullReset();
     document.getElementById('depOverlay').classList.add('open');
     document.body.style.overflow='hidden';
