@@ -117,8 +117,8 @@ router.post('/address', requireAuth, async (req, res) => {
   if (!TREASURY[coin]) return res.status(503).json({ error: `Deposit temporarily unavailable for ${coin}` });
 
   const usd = parseFloat(amount_usd);
-  if (!isFinite(usd) || usd < 10 || usd > 50000)
-    return res.status(400).json({ error: 'Amount must be between $10 and $50,000' });
+  if (!isFinite(usd) || usd < 500 || usd > 50000)
+    return res.status(400).json({ error: 'Amount must be between $500 and $50,000' });
 
   /* One active deposit at a time — auto-cancel pending (unsubmitted) deposits so user can change coin/amount */
   const active = db.prepare(
