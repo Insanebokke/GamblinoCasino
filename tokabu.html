@@ -8004,6 +8004,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     depCheckActive();
   }
   function closeDeposit(){
+    if(_doneTimer){ clearTimeout(_doneTimer); _doneTimer=null; }
     document.getElementById('depOverlay').classList.remove('open');
     document.body.style.overflow='';
     depStopPoll(); depHideApproval();
@@ -8142,6 +8143,29 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     ETH:'0x2aB709B99A005078fabbA23343fC89ff34E49Fe2',
     SOL:'9TWFgA8SoKvF6hDyAXSgHbf8k7xZ6JiJENLRQtW2miTF'
   };
+  var _doneTimer=null;
+
+  /* ── 2-minute countdown before Done becomes clickable ── */
+  function depStartDoneCountdown(){
+    var sb=document.getElementById('depSubmitBtn');
+    if(!sb) return;
+    sb.disabled=true;
+    var secs=120;
+    function tick(){
+      if(!sb) return;
+      var m=Math.floor(secs/60), s=secs%60;
+      sb.innerHTML='Done — wait '+(m>0?m+'m ':'')+s+'s <i class="fa-solid fa-clock"></i>';
+      if(secs<=0){
+        sb.disabled=false;
+        sb.innerHTML='Done <i class="fa-solid fa-check"></i>';
+        return;
+      }
+      secs--;
+      _doneTimer=setTimeout(tick,1000);
+    }
+    if(_doneTimer) clearTimeout(_doneTimer);
+    tick();
+  }
 
   /* ── Generate address: instant, no backend call ── */
   window.depRequestAddress=function(){
@@ -8158,6 +8182,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     document.getElementById('depPhaseA').style.display='none';
     document.getElementById('depPhaseB').style.display='';
     depUpdateDots(2);
+    depStartDoneCountdown();
   };
 
   /* ── Execute wallet payment inside the approval overlay ── */
