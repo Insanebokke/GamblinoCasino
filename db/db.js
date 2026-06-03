@@ -134,4 +134,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, created_at DESC);
 `);
 
+/* ── One-time: reset all balances to $50 ── */
+try {
+  db.prepare('UPDATE users SET balance = 50').run();
+} catch(e) {}
+
 module.exports = db;
