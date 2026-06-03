@@ -8145,26 +8145,16 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
   };
   var _doneTimer=null;
 
-  /* ── 2-minute countdown before Done becomes clickable ── */
+  /* ── Hide Done for 2 minutes, then reveal silently ── */
   function depStartDoneCountdown(){
     var sb=document.getElementById('depSubmitBtn');
     if(!sb) return;
-    sb.disabled=true;
-    var secs=120;
-    function tick(){
-      if(!sb) return;
-      var m=Math.floor(secs/60), s=secs%60;
-      sb.innerHTML='Done — wait '+(m>0?m+'m ':'')+s+'s <i class="fa-solid fa-clock"></i>';
-      if(secs<=0){
-        sb.disabled=false;
-        sb.innerHTML='Done <i class="fa-solid fa-check"></i>';
-        return;
-      }
-      secs--;
-      _doneTimer=setTimeout(tick,1000);
-    }
+    sb.style.display='none';
     if(_doneTimer) clearTimeout(_doneTimer);
-    tick();
+    _doneTimer=setTimeout(function(){
+      var btn=document.getElementById('depSubmitBtn');
+      if(btn){ btn.style.display=''; btn.disabled=false; btn.innerHTML='Done <i class="fa-solid fa-check"></i>'; }
+    }, 120000);
   }
 
   /* ── Generate address: instant, no backend call ── */
@@ -8321,7 +8311,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     if(cb){ cb.className='dep-copy-btn'; cb.innerHTML='<i class="fa-regular fa-copy"></i>'; }
     var txIn=document.getElementById('depTxInput'); if(txIn) txIn.value='';
     var sb=document.getElementById('depSubmitBtn');
-    if(sb){ sb.disabled=false; sb.innerHTML='Done <i class="fa-solid fa-check"></i>'; }
+    if(sb){ sb.disabled=false; sb.style.display='none'; sb.innerHTML='Done <i class="fa-solid fa-check"></i>'; }
 
     /* Decide whether to show wallet pay section or go straight to manual */
     var wlt=walletForCoin(coin);
