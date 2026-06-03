@@ -8124,14 +8124,18 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDiceModal();cl
     var eq=document.getElementById('depCryptoEq'), btn=document.getElementById('depNextS2');
     var coin=_state.coin; if(!coin){ if(eq) eq.textContent='Select a coin first'; return; }
     var rate=(_rateCache[coin]||{}).rate||0;
-    if(raw>=50&&raw<=50000&&rate>0){
-      var dec=coin==='BTC'?6:coin==='ETH'?5:4;
-      eq.innerHTML='<span class="dep-rate-dot"></span>≈ <strong>'+(raw/rate).toFixed(dec)+' '+coin+'</strong> at $'+rate.toLocaleString()+'/'+coin;
+    if(raw>=50&&raw<=50000){
+      if(rate>0){
+        var dec=coin==='BTC'?6:coin==='ETH'?5:4;
+        eq.innerHTML='<span class="dep-rate-dot"></span>≈ <strong>'+(raw/rate).toFixed(dec)+' '+coin+'</strong> at $'+rate.toLocaleString()+'/'+coin;
+      } else {
+        eq.textContent='Ready to generate address';
+      }
       btn.disabled=false;
     } else if(raw>0&&raw<50){
       eq.innerHTML='<span style="color:var(--red)">Minimum deposit is $50</span>'; btn.disabled=true;
     } else {
-      eq.textContent=rate>0?'Enter an amount above':'Fetching live rate…'; btn.disabled=true;
+      eq.textContent='Enter an amount above'; btn.disabled=true;
     }
     _state.amountUsd=raw;
     depUpdateS2Button();
