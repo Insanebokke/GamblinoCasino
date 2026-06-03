@@ -37,7 +37,7 @@ router.post('/signup', async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     const { lastInsertRowid } = db
-      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 50)')
+      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 0)')
       .run(username.trim(), email.toLowerCase().trim(), hash);
 
     const user = db.prepare(`SELECT ${SAFE_COLS} FROM users WHERE id = ?`).get(lastInsertRowid);
@@ -90,7 +90,7 @@ router.post('/guest', async (req, res) => {
   try {
     const hash = await bcrypt.hash(guestId, 10);
     const { lastInsertRowid } = db
-      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 50)')
+      .prepare('INSERT INTO users (username, email, password_hash, balance) VALUES (?, ?, ?, 0)')
       .run(username, email, hash);
     const user = db.prepare(`SELECT ${SAFE_COLS} FROM users WHERE id = ?`).get(lastInsertRowid);
     res.status(201).json({ token: sign(lastInsertRowid), user });

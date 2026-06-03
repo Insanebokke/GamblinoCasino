@@ -14,7 +14,7 @@ db.exec(`
     username      TEXT    NOT NULL UNIQUE COLLATE NOCASE,
     email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,
     password_hash TEXT    NOT NULL,
-    balance       REAL    NOT NULL DEFAULT 50.00,
+    balance       REAL    NOT NULL DEFAULT 0.00,
     total_bets    INTEGER NOT NULL DEFAULT 0,
     total_wins    INTEGER NOT NULL DEFAULT 0,
     total_wagered REAL    NOT NULL DEFAULT 0,
@@ -134,9 +134,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, created_at DESC);
 `);
 
-/* ── One-time: reset all balances to $50 ── */
+/* ── One-time: reset all balances to $0 ── */
 try {
-  db.prepare('UPDATE users SET balance = 50').run();
+  db.prepare('UPDATE users SET balance = 0').run();
 } catch(e) {}
 
 module.exports = db;
